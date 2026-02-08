@@ -168,6 +168,8 @@ const slides = [
             <li><strong>Reliability:</strong> Single agent call; if screenshot agent is down or slow, whole scan fails; no fallback (e.g. “Scan as URL” or cached result). Limited metrics for scan-screen latency and success rate.</li>
             <li><strong>Privacy:</strong> Full image sent to cloud; no on-device pre-check or optional “minimal send” (e.g. only extracted URLs) for privacy-sensitive users.</li>
             <li><strong>Browser HTML:</strong> When the screen is from a browser, we do not use the page HTML (e.g. page source/DOM); we only get HTML by fetching from extracted URLs in the Link checker. We could get the HTML from the browser and analyze it as well — consider now.</li>
+            <li><strong>Partial result streaming:</strong> We return one final response; no streaming of intermediate results (e.g. extracted URLs, link check) so users see nothing until the end and get no partial result on timeout.</li>
+            <li><strong>Cancel in-flight scan:</strong> User cannot cancel an ongoing screenshot analysis; request runs to completion or 90s timeout. ApiClient uses AbortController only for timeout, not for user-triggered abort.</li>
           </ul>
           <table className="storage-table mt-4">
             <thead><tr><th>Area</th><th>Issue</th></tr></thead>
@@ -179,6 +181,8 @@ const slides = [
               <tr><td>Browser HTML</td><td>Don't use page HTML when screen is from browser</td></tr>
               <tr><td>Empty extraction</td><td>No "no links in image" messaging</td></tr>
               <tr><td>Retry / rate limit</td><td>No backend retry on agent failure; no rate limit on analyze</td></tr>
+              <tr><td>Partial result streaming</td><td>Single final response; nothing until end</td></tr>
+              <tr><td>Cancel in-flight scan</td><td>No way to cancel; runs to completion or 90s timeout</td></tr>
             </tbody>
           </table>
         </div>
@@ -222,7 +226,7 @@ const slides = [
         <div className="card-section card-section-plan">
           <h3>{ICON.phases} Phases (from SCAN_SCREEN_IMPROVEMENT_PLAN.md)</h3>
           <ul className="slide-points text-sm">
-            <li><strong>Phase 1 – UX (short term):</strong> Staged progress in UI (“Uploading…”, “Analyzing screenshot…”, “Checking links…”). Clear timeout/error message after ~30s and retry on failure. History: “View details” and optional “Re-analyze”. <strong>Consider now:</strong> When the screenshot is from a browser, get the HTML content (page source/DOM) and send it for analysis as well.</li>
+            <li><strong>Phase 1 – UX (short term):</strong> Staged progress in UI (“Uploading…”, “Analyzing screenshot…”, “Checking links…”). Clear timeout/error message after ~30s and retry on failure. History: “View details” and optional “Re-analyze”. <strong>Consider now:</strong> When the screenshot is from a browser, get the HTML content (page source/DOM) and send it for analysis as well. <strong>Partial result streaming:</strong> stream intermediate results (extracted URLs, link check, then verdict) for progress and timeout fallback. <strong>Cancel:</strong> user can cancel in-flight analysis (AbortSignal for user-triggered abort).</li>
             <li><strong>Phase 2 – Consistency (medium term):</strong> When URL-safety allowlist/blocklist exists, run extracted URLs from screenshot through the same check in the agent. Same URL → same verdict in “scan screen” and “URL monitoring”.</li>
             <li><strong>Phase 3 – Fast path & caching (medium term):</strong> Optional perceptual hash + cache (return cached result for same/similar screenshot); optional “quick check” before full pipeline.</li>
             <li><strong>Phase 4 – Reliability (ongoing):</strong> Fallback on agent timeout/5xx (clear error + “Try again” or “Scan as URL”). Metrics: latency, success rate, scan type. Health checks.</li>
@@ -251,12 +255,15 @@ const slides = [
               <tr><td>Efficiency</td><td>Full pipeline every scan</td><td>Optional cache hit for same/similar screenshot</td></tr>
               <tr><td>Error handling</td><td>Generic timeout/error</td><td>Clear message + retry; optional “Scan as URL”</td></tr>
             <tr><td>Observability</td><td>Ad hoc</td><td>Latency, success rate, scan type</td></tr>
+              <tr><td>Cancel in-flight scan</td><td>No way to cancel; runs to completion or 90s timeout</td><td>User can cancel; ApiClient uses AbortSignal for user-triggered abort</td></tr>
             </tbody>
           </table>
           <h3 className="slide-subtitle">Also in plan (gaps / future)</h3>
           <ul className="slide-points text-sm">
             <li><strong>Empty extraction:</strong> When no URLs in image, show "No links in image — analysis based on visual only."</li>
             <li><strong>Backend:</strong> Retry on agent 5xx/timeout; consider rate limit on analyze.</li>
+            <li><strong>Partial result streaming:</strong> Stream intermediate results (extracted URLs, link check, then verdict) for progress and timeout fallback.</li>
+            <li><strong>Cancel in-flight scan:</strong> User can cancel ongoing analysis; ApiClient uses AbortSignal for user-triggered abort.</li>
             <li><strong>Future research:</strong> CAPTCHA-cloaking, adversarial evasion; accessibility; confidence; offline / history.</li>
           </ul>
           <h3 className="slide-subtitle">Next steps</h3>
